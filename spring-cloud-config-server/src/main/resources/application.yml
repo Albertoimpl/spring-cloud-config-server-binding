@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: spring-cloud-config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: "https://github.com/pivotal-cf/scs-public-config-repo.git"
+          cloneOnStart: true

@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-client-app
+spec:
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: spring-cloud-config-client-app
+  template:
+    metadata:
+      labels:
+        app: spring-cloud-config-client-app
+    spec:
+      containers:
+        - name: config-server
+          image: albertoimpl/spring-cloud-config-client-app:latest
+          livenessProbe:
+            httpGet:
+              port: 8081
+              scheme: "HTTP"
+              path: "/actuator/health/liveness"
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              port: 8081
+              scheme: "HTTP"
+              path: "/actuator/health/readiness"
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+          ports:
+            - containerPort: 8081
+          env:
+            - name: spring.cloud.bootstrap.location
+              value: "/etc/config/bootstrap.properties"
+          volumeMounts:
+            - name: my-config-server-configuration
+              mountPath: /etc/config
+      volumes:
+        - name: my-config-server-configuration
+          configMap:
+            name: my-config-server-configuration
+            items:
+              - key: bootstrap.properties
+                path: bootstrap.properties

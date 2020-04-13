@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-config-server
+spec:
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: spring-cloud-config-server
+  template:
+    metadata:
+      labels:
+        app: spring-cloud-config-server
+    spec:
+      containers:
+      - name: config-server
+        image: albertoimpl/spring-cloud-config-server:latest
+        ports:
+        - containerPort: 8080
