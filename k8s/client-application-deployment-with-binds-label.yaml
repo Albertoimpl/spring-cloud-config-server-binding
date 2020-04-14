@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-client-app
+spec:
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: spring-cloud-config-client-app
+      binds-to: my-config-server
+  template:
+    metadata:
+      labels:
+        app: spring-cloud-config-client-app
+        binds-to: my-config-server
+    spec:
+      containers:
+        - name: config-server-client
+          image: albertoimpl/spring-cloud-config-client-app:latest
+          livenessProbe:
+            httpGet:
+              port: 8081
+              scheme: "HTTP"
+              path: "/actuator/health/liveness"
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              port: 8081
+              scheme: "HTTP"
+              path: "/actuator/health/readiness"
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+          ports:
+            - containerPort: 8081

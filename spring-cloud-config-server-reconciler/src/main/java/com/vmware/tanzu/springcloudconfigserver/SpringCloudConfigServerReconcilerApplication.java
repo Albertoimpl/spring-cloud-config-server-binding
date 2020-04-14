@@ -1,4 +1,4 @@
-package com.example.springcloudconfigserverbindingreconciler;
+package com.vmware.tanzu.springcloudconfigserver;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -18,28 +18,30 @@ import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.Configuration;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
-import io.kubernetes.client.openapi.models.V1Pod;
-import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.util.ClientBuilder;
 import io.kubernetes.client.util.KubeConfig;
 
-public class SpringCloudConfigServerBindingReconcilerApplication {
+public class SpringCloudConfigServerReconcilerApplication {
 
-	private static final String CONTROLLER_NAME = "PodBindingController";
+	private static final String CONTROLLER_NAME = "SpringCloudConfigServerController";
 
 	private static final int WORKER_COUNT = 4;
 
 	public static void main(String[] args) throws IOException {
 		ApiClient client = initializeApiClient();
-		CoreV1Api coreV1Api = new CoreV1Api(client);
+		SpringCloudConfigServerV1Api springCloudConfigServerApi = new SpringCloudConfigServerV1Api(client);
+
 		AppsV1Api appsV1Api = new AppsV1Api(client);
-		PatchService patchService = new PatchService(appsV1Api);
+		DeploymentService deploymentService = new DeploymentService(appsV1Api);
+		CoreV1Api coreV1Api = new CoreV1Api(client);
+		ServiceService serviceService = new ServiceService(coreV1Api);
+		ConfigMapService configMapService = new ConfigMapService(coreV1Api);
 
 		SharedInformerFactory factory = new SharedInformerFactory();
 		ControllerManagerBuilder managerBuilder = ControllerBuilder.controllerManagerBuilder(factory);
 
-		SharedIndexInformer<V1Pod> informer = factory.sharedIndexInformerFor(
-			callGeneratorParams -> coreV1Api.listPodForAllNamespacesCall(
+		SharedIndexInformer<V1SpringCloudConfigServer> informer = factory.sharedIndexInformerFor(
+			callGeneratorParams -> springCloudConfigServerApi.listSpringCloudConfigServerForAllNamespacesCall(
 				null,
 				null,
 				null,
@@ -49,13 +51,14 @@ public class SpringCloudConfigServerBindingReconcilerApplication {
 				callGeneratorParams.resourceVersion,
 				callGeneratorParams.timeoutSeconds,
 				callGeneratorParams.watch,
-				PodListCallback()),
-			V1Pod.class,
-			V1PodList.class);
+				SpringCloudConfigServerListCallback()),
+			V1SpringCloudConfigServer.class,
+			V1SpringCloudConfigServerList.class);
 
 		Controller controller = ControllerBuilder.defaultBuilder(factory).watch(
 			(workQueue) -> createControllerWatch(workQueue))
-			.withReconciler(new SpringCloudConfigServerBindingReconciler(informer, patchService))
+			.withReconciler(new SpringCloudConfigServerReconciler(informer, deploymentService, serviceService,
+				configMapService))
 			.withName(CONTROLLER_NAME)
 			.withWorkerCount(WORKER_COUNT)
 			.build();
@@ -81,40 +84,40 @@ public class SpringCloudConfigServerBindingReconcilerApplication {
 		return client;
 	}
 
-	private static DefaultControllerWatch<V1Pod> createControllerWatch(WorkQueue<Request> workQueue) {
-		return ControllerBuilder.controllerWatchBuilder(V1Pod.class, workQueue)
+	private static DefaultControllerWatch<V1SpringCloudConfigServer> createControllerWatch(WorkQueue<Request> workQueue) {
+		return ControllerBuilder.controllerWatchBuilder(V1SpringCloudConfigServer.class, workQueue)
 			.withWorkQueueKeyFunc(
-				pod -> new Request("default", pod.getMetadata().getName()))
+				pod -> new Request("default", "my-config-server"))
 			.withOnAddFilter(pod -> {
 				String namespace = "default";
-				String name = pod.getMetadata().getName();
+				String name = "my-config-server";
 
 				System.out.println(String.format(
-					"[%s] Event: Add Pod '%s/%s'", CONTROLLER_NAME, namespace, name));
+					"[%s] Event: Add SpringCloudConfigServer '%s/%s'", CONTROLLER_NAME, namespace, name));
 				return true;
 			})
-			.withOnUpdateFilter((oldPod, newPod) -> {
+			.withOnUpdateFilter((oldSpringCloudConfigServer, newSpringCloudConfigServer) -> {
 				String namespace = "default";
-				String name = newPod.getMetadata().getName();
+				String name = "my-config-server";
 
 				System.out.println(String.format(
-					"[%s] Event: Update Pod '%s/%s'", CONTROLLER_NAME, namespace, name));
+					"[%s] Event: Update SpringCloudConfigServer '%s/%s'", CONTROLLER_NAME, namespace, name));
 
 				return true;
 			})
 			.withOnDeleteFilter((pod, aBoolean) -> {
 				String namespace = "default";
-				String name = pod.getMetadata().getName();
+				String name = "my-config-server";
 
 				System.out.println(String.format(
-					"[%s] Event: Delete Pod '%s/%s'", CONTROLLER_NAME, namespace, name));
+					"[%s] Event: Delete SpringCloudConfigServer '%s/%s'", CONTROLLER_NAME, namespace, name));
 				return true;
 			})
 			.build();
 	}
 
-	private static ApiCallback<V1PodList> PodListCallback() {
-		return new ApiCallback<V1PodList>() {
+	private static ApiCallback<V1SpringCloudConfigServerList> SpringCloudConfigServerListCallback() {
+		return new ApiCallback<V1SpringCloudConfigServerList>() {
 			@Override
 			public void onUploadProgress(long bytesWritten, long contentLength, boolean done) {
 
@@ -126,7 +129,7 @@ public class SpringCloudConfigServerBindingReconcilerApplication {
 			}
 
 			@Override
-			public void onSuccess(V1PodList result, int statusCode, Map responseHeaders) {
+			public void onSuccess(V1SpringCloudConfigServerList result, int statusCode, Map responseHeaders) {
 				System.out.println("onSuccess SharedIndexInformer");
 				System.out.println(statusCode);
 			}

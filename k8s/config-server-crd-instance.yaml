@@ -1,0 +1,6 @@
+apiVersion: "tanzu.vmware.com/v1"
+kind: SpringCloudConfigServer
+metadata:
+  name: my-config-server
+spec:
+  {}

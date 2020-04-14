@@ -48,10 +48,50 @@ kubectl apply -f k8s/client-application-deployment-with-configmap.yaml
 ```
 
 ```shell script
-k port-forward pod/my-client-app-86d564d688-pn42d 8081:8081
+kubectl port-forward pod/my-client-app-86d564d688-pn42d 8081:8081
 
 curl localhost:8081/text
 GitHub configuration repository!!!!!%
 ```
 
-# Binding the client application to the service instance, using `spring-cloud-config-server-binding-reconciler`
+# Binding the client application to the service instance, using `spring-cloud-config-server-binding-reconciler` and `kind: SpringCloudConfigServer`
+
+## Setup
+
+Creating the `kind: SpringCloudConfigServer` CRD:
+
+```shell script
+kubectl apply -f k8s/spring-cloud-config-server-custom-resource-definition.yaml
+```
+
+Run `SpringCloudConfigServerReconcilerApplication` to reconcile the new creations.
+The `SpringCloudConfigServerReconciler` will create a `Service`, a `Deployment` and a `ConfigMap`. Every time a new `kind: SpringCloudConfigServer` gets created.
+
+Run `SpringCloudConfigServerBindingReconcilerApplication` to reconcile the bindings.
+The `SpringCloudConfigServerBindingReconciler` will update the `Pod` by expecting the label `binds-to=my-config-server`.
+
+## What the user will do
+
+Creating a new instance of `kind: SpringCloudConfigServer`:
+```shell script
+kubectl apply -f k8s/config-server-crd-instance.yaml
+```
+
+Deploying the spring-cloud-config-client-app client application with the label `binds-to=my-config-server`.
+```shell script
+kubectl apply -f k8s/client-application-deployment-with-binds-label.yaml
+```
+
+```shell script
+kubectl port-forward pod/my-client-app-86d564d688-pn42d 8081:8081
+
+curl localhost:8081/text
+GitHub configuration repository!!!!!%
+```
+
+## cleanup
+```shell script
+k delete scc my-config-server
+k delete crd springcloudconfigservers.tanzu.vmware.com
+k delete deployment.apps/my-client-app
+```
